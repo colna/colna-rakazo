@@ -50,6 +50,23 @@ describe("resolveDeploymentModel", () => {
     });
   });
 
+  it("runs DeepSeek from its own key and default model", () => {
+    expect(
+      resolveDeploymentModel({
+        PI_DEFAULT_PROVIDER: "deepseek",
+        PI_DEFAULT_MODEL: "deepseek-flash",
+        DEEPSEEK_API_KEY: "sk-deepseek",
+        OPENROUTER_API_KEY: "or-key",
+      }),
+    ).toEqual({
+      provider: "deepseek",
+      model: "deepseek-flash",
+      key: "sk-deepseek",
+      configured: true,
+      hostCredentials: false,
+    });
+  });
+
   it("runs a provider that authenticates from the host without a key", () => {
     vi.stubEnv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI", "/v2/credentials/example");
     const taskRole = {
