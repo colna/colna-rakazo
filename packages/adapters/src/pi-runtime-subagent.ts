@@ -273,7 +273,9 @@ export async function executeSubagent(
   host.nestedAgents.add(nested);
 
   let streamed = "";
+  let reasoning = "";
   let lastPush = 0;
+  let lastReasoningPush = 0;
   // A tool result that ended the child's turn carries the reply the parent must read.
   let terminatedReply: string | undefined;
   nested.subscribe((event) => {
@@ -284,6 +286,7 @@ export async function executeSubagent(
       // A later assistant turn supersedes the carried reply, except the empty aborted
       // message of a turn the terminating result itself ended.
       if (event.message.stopReason !== "aborted") terminatedReply = undefined;
+      reasoning = "";
     }
     if (event.type === "tool_execution_start") {
       if (host.toolCallBudget.exceeded) return;
@@ -296,6 +299,24 @@ export async function executeSubagent(
         status: "running",
         progress: `using ${toolName}…`,
       });
+    }
+    if (event.type === "message_update" && event.assistantMessageEvent.type === "thinking_delta") {
+      const delta = event.assistantMessageEvent.delta;
+      if (delta) {
+        reasoning += delta;
+        const now = Date.now();
+        if (now - lastReasoningPush >= 80) {
+          lastReasoningPush = now;
+          host.queue.push({
+            type: "subagent",
+            agentId,
+            name,
+            task,
+            status: "running",
+            progress: `Thinking… ${reasoning.slice(-2000)}`,
+          });
+        }
+      }
     }
     if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
       const delta = event.assistantMessageEvent.delta;

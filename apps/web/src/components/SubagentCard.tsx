@@ -25,6 +25,8 @@ export function SubagentCard({ block }: { block: SubagentBlock }) {
   const running = block.status === "running";
   const failed = block.status === "failed";
   const body = block.result || block.progress || "";
+  const progressLine =
+    running && !open && block.progress ? block.progress.replace(/\s+/g, " ").trim() : "";
   return (
     <Collapsible
       open={open}
@@ -77,6 +79,15 @@ export function SubagentCard({ block }: { block: SubagentBlock }) {
         >
           {block.task}
         </span>
+        {progressLine ? (
+          <span
+            data-testid="subagent-progress"
+            className="mt-1 block truncate text-[12.5px] text-muted-foreground"
+            dir="auto"
+          >
+            {progressLine}
+          </span>
+        ) : null}
       </CollapsibleTrigger>
       {body ? (
         <CollapsibleContent>

@@ -83,6 +83,22 @@ describe("SubagentCard", () => {
     card.unmount();
   });
 
+  it("shows one line of thinking progress while folded and the full text when opened", () => {
+    const card = mountCard({
+      ...finished,
+      agentId: "agent-thinking",
+      status: "running",
+      result: undefined,
+      progress: "Thinking… first line\nsecond line",
+    });
+    expect(card.get("subagent-progress")?.textContent).toBe("Thinking… first line second line");
+    expect(card.get("subagent-progress")?.className).toContain("truncate");
+    card.click();
+    expect(card.get("subagent-progress")).toBeNull();
+    expect(card.get("subagent-body")?.textContent).toBe("Thinking… first line\nsecond line");
+    card.unmount();
+  });
+
   it("shows progress when opened while the helper runs", () => {
     const card = mountCard({
       ...finished,
