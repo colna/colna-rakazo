@@ -103,6 +103,27 @@ chomp-indent: |-2
     expect(parsed.frontmatter["chomp-indent"]).toBe("Chomp then indent");
   });
 
+  it("parses a plain scalar continued on indented lines", () => {
+    const doc = `---
+name: vercel-react-native-skills
+description:
+  React Native and Expo best practices for building performant mobile apps. Use
+  when building React Native components, optimizing list performance, or
+  working with native modules.
+license: MIT
+---
+
+# Body
+`;
+    const parsed = parseSkillMd(doc);
+    expect("error" in parsed).toBe(false);
+    if ("error" in parsed) return;
+    expect(parsed.description).toBe(
+      "React Native and Expo best practices for building performant mobile apps. Use when building React Native components, optimizing list performance, or working with native modules.",
+    );
+    expect(parsed.frontmatter.license).toBe("MIT");
+  });
+
   it("preserves more-indented lines inside folded scalars", () => {
     const cases: Array<{ label: string; detail: string; expected: string }> = [
       {

@@ -22,6 +22,11 @@ a short description of when to use it, and the steps.
 You can also add skills from a GitHub repository: choose **From GitHub**, paste the repository URL,
 then **Preview** and **Add**.
 
+To bring in a folder of Agent Skills from your computer, such as `~/.agents/skills` or a
+colna-memo skills index, choose **Import folder** and pick the folder. Every `SKILL.md` inside is
+added, and folders with the same skill name are skipped. Only the instructions are imported;
+scripts and other files beside `SKILL.md` are not.
+
 > [!NOTE]
 > Skills added from GitHub or a plugin are instructions only. Any scripts they include are not run.
 

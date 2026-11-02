@@ -133,6 +133,33 @@ it("disables skill rows while a completed save is refreshing the catalog", async
   }
 });
 
+it("imports every SKILL.md from a chosen folder", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.list.mockReset().mockResolvedValue([]);
+  api.create.mockReset().mockResolvedValue({});
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await show(root, <AgentSkills />);
+    const input = host.querySelector<HTMLInputElement>('[data-testid="skills-folder-import"]');
+    if (!input) throw new Error("Missing folder input");
+    const skill = "---\nname: release\ndescription: Ship a release\n---\n\nShip it.\n";
+    const file = {
+      name: "SKILL.md",
+      webkitRelativePath: "release/SKILL.md",
+      text: async () => skill,
+    };
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+    await settle();
+    expect(api.create).toHaveBeenCalledWith({ content: skill });
+    expect(host.textContent).toContain("Imported 1 skills.");
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
 it("badges built-in skills and leaves plugin skills to their plugin", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const catalog: AgentSkillCatalogEntry[] = [

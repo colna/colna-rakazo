@@ -6,7 +6,7 @@ import { fetchFresh, writeSaved } from "@rakazo/core/query";
 import { Badge, Button, SectionHeading, Skeleton, Textarea } from "@rakazo/ui-web";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web/components/ui/tooltip";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   AvailabilityControl,
@@ -17,6 +17,7 @@ import {
 import { SettingsSectionHeading } from "../components/SettingsSectionHeading";
 import { downloadArtifactBytes } from "../lib/artifact-open";
 import { useSpaceQueries } from "../lib/query";
+import { readSkillsFromFolder } from "../lib/skills-import";
 import { useSpaceRpc } from "../lib/space-rpc";
 
 const NO_DOCS: MemoryDocument[] = [];
@@ -355,11 +356,57 @@ export function AgentSkills() {
   const [actionError, setError] = useState<string | null>(null);
   const error = actionError ?? (listQuery.isError ? t`Could not load` : null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const folderInput = useRef<HTMLInputElement | null>(null);
   const selection = useRef(0);
   const spaceCount = useOwnSpaces().length;
 
   async function refresh() {
     return fetchFresh(queryClient, list);
+  }
+
+  async function importFolder(fileList: FileList | null) {
+    if (!fileList?.length || importing) return;
+    setImporting(true);
+    setImportMessage(null);
+    setError(null);
+    try {
+      const files = Array.from(fileList).map((file) => ({
+        path: file.webkitRelativePath || file.name,
+        text: () => file.text(),
+      }));
+      const parsed = await readSkillsFromFolder(files);
+      const existing = new Set(
+        (listQuery.data ?? NO_SKILLS).map((skill) => skill.name.toLocaleLowerCase("en-US")),
+      );
+      let imported = 0;
+      let failed = 0;
+      for (const skill of parsed.skills) {
+        if (existing.has(skill.name.toLocaleLowerCase("en-US"))) {
+          parsed.skipped.push({ path: skill.path, reason: "duplicate" });
+          continue;
+        }
+        try {
+          await rpc.agentSkills.create({ content: skill.content });
+          existing.add(skill.name.toLocaleLowerCase("en-US"));
+          imported += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      if (imported > 0) await refresh();
+      const skipped = parsed.skipped.length + failed;
+      setImportMessage(
+        skipped > 0
+          ? t`Imported ${imported} skills; skipped ${skipped}.`
+          : t`Imported ${imported} skills.`,
+      );
+    } catch {
+      setError(t`Could not import skills`);
+    } finally {
+      setImporting(false);
+    }
   }
 
   useEffect(
@@ -573,23 +620,55 @@ export function AgentSkills() {
           </div>
         </div>
       ) : (
-        <Button
-          variant="ghost"
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            selection.current += 1;
-            setOpen(null);
-            setCreating(true);
-            setConfirmingDelete(false);
-            setDraft(NEW_SKILL_TEMPLATE);
-            setError(null);
-          }}
-          className="-mx-2.5 mt-2 h-auto min-h-11 w-[calc(100%+1.25rem)] justify-between px-2.5 py-2.5 text-sm font-normal text-foreground"
-        >
-          <Trans>New skill</Trans>
-          <Plus aria-hidden="true" className="size-4 text-muted-foreground" />
-        </Button>
+        <>
+          <input
+            ref={(node) => {
+              folderInput.current = node;
+              if (!node) return;
+              node.setAttribute("webkitdirectory", "");
+              return () => {
+                folderInput.current = null;
+              };
+            }}
+            type="file"
+            data-testid="skills-folder-import"
+            className="hidden"
+            onChange={(event) => {
+              void importFolder(event.target.files);
+              event.target.value = "";
+            }}
+          />
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              selection.current += 1;
+              setOpen(null);
+              setCreating(true);
+              setConfirmingDelete(false);
+              setDraft(NEW_SKILL_TEMPLATE);
+              setError(null);
+            }}
+            className="-mx-2.5 mt-2 h-auto min-h-11 w-[calc(100%+1.25rem)] justify-between px-2.5 py-2.5 text-sm font-normal text-foreground"
+          >
+            <Trans>New skill</Trans>
+            <Plus aria-hidden="true" className="size-4 text-muted-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={busy || importing}
+            onClick={() => folderInput.current?.click()}
+            className="-mx-2.5 h-auto min-h-11 w-[calc(100%+1.25rem)] justify-between px-2.5 py-2.5 text-sm font-normal text-foreground"
+          >
+            {importing ? <Trans>Importing…</Trans> : <Trans>Import folder</Trans>}
+            <Upload aria-hidden="true" className="size-4 text-muted-foreground" />
+          </Button>
+          {importMessage ? (
+            <div className="px-2.5 pb-1 text-[13px] text-muted-foreground">{importMessage}</div>
+          ) : null}
+        </>
       )}
     </div>
   );

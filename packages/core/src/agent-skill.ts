@@ -1,3 +1,5 @@
+import { parse as parseYaml } from "yaml";
+
 /**
  * Claude Agent Skills: reusable SKILL.md recipes shared across assistants.
  * The Pi runtime already understands this format; we persist and inject them.
@@ -419,7 +421,7 @@ function decodeYamlBlockScalar(rawLines: string[], header: YamlBlockScalarHeader
  * inline arrays, and nested maps one level deep.
  * Unrecognized lines are kept as string values under their key when possible.
  */
-function parseSimpleYamlObject(text: string): Record<string, unknown> {
+function parseLegacyYamlObject(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const lines = text.split(/\r?\n/);
   let i = 0;
@@ -489,6 +491,27 @@ function parseSimpleYamlObject(text: string): Record<string, unknown> {
     i += 1;
   }
   return result;
+}
+
+/**
+ * Parse the small YAML subset saved by buildSkillMd first, then fall back to a full parser
+ * for valid real-world SKILL.md frontmatter such as indented map values or multiline plain
+ * scalars. Keeping the saved subset first preserves its exact quoting and chomping round-trip.
+ */
+function parseSimpleYamlObject(text: string): Record<string, unknown> {
+  try {
+    return parseLegacyYamlObject(text);
+  } catch (legacyError) {
+    let value: unknown;
+    try {
+      value = parseYaml(text);
+    } catch {
+      throw legacyError;
+    }
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  }
 }
 
 function parseYamlScalar(raw: string): string | number | boolean {
