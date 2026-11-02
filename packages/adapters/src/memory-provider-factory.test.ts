@@ -1,4 +1,7 @@
 import { lookup } from "node:dns/promises";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertLocalServiceBaseUrl } from "./local-service-endpoint.js";
 import { createMemoryProvider, SpaceMemoryProviderResolver } from "./memory-provider-factory.js";
@@ -12,6 +15,7 @@ function resolverFor(
     mode?: "cloud" | "local";
     allowPrivateEndpoint?: boolean;
     baseUrl?: string;
+    settings?: Record<string, string>;
   } = {},
 ) {
   vi.stubEnv("MCP_ALLOW_PRIVATE_ENDPOINT", options.allowPrivateEndpoint ? "true" : "false");
@@ -20,7 +24,7 @@ function resolverFor(
       findUnique: vi.fn(async () => ({
         userId: "config-author",
         provider: options.provider ?? "supermemory",
-        settings: {
+        settings: options.settings ?? {
           mode: options.mode ?? "cloud",
           baseUrl: options.baseUrl ?? "https://api.supermemory.ai",
         },
@@ -158,6 +162,26 @@ describe("SpaceMemoryProviderResolver", () => {
 
     expect(configured?.provider.describe().id).toBe("supermemory");
     expect(configured?.defaultScope).toBe("shared");
+  });
+
+  it("resolves the Markdown vault provider with no credentials", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rakazo-vault-factory-"));
+    try {
+      const { resolver } = resolverFor("{}", {
+        provider: "markdown-vault",
+        settings: { root, allowWrites: "false" },
+        allowPrivateEndpoint: true,
+      });
+
+      const configured = await resolver.resolve("workspace-1");
+
+      expect(configured?.provider.describe()).toMatchObject({
+        id: "markdown-vault",
+        capabilities: { recall: true, save: true },
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("keeps legacy raw Supermemory credentials usable after the schema migration", async () => {

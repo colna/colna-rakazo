@@ -9,6 +9,11 @@ import {
 } from "./honcho-memory-provider.js";
 import { revalidateLocalServiceSettings } from "./local-service-endpoint.js";
 import {
+  createMarkdownVaultProvider,
+  MARKDOWN_VAULT_PROVIDER_ID,
+  prepareMarkdownVaultConnection,
+} from "./markdown-vault-memory-provider.js";
+import {
   classifySerenityConnectionSettings,
   createSerenityProvider,
   prepareSerenityConnection,
@@ -68,6 +73,15 @@ interface MemoryProviderAdapter {
 }
 
 const MEMORY_PROVIDER_ADAPTERS: ReadonlyMap<string, MemoryProviderAdapter> = new Map([
+  [
+    MARKDOWN_VAULT_PROVIDER_ID,
+    {
+      // A local path is read by the API process, so the deployment owner opts in first.
+      requiresPrivateEndpoint: () => true,
+      prepare: prepareMarkdownVaultConnection,
+      create: createMarkdownVaultProvider,
+    },
+  ],
   [
     SUPERMEMORY_PROVIDER_ID,
     {
@@ -158,8 +172,11 @@ export function toStringRecord(value: unknown): Record<string, string> {
 
 function decodeCredentials(provider: string, plaintext: string): Record<string, string> {
   try {
-    const credentials = toStringRecord(JSON.parse(plaintext));
-    if (Object.keys(credentials).length > 0) return credentials;
+    const parsed: unknown = JSON.parse(plaintext);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      // Some providers authenticate with the configured path alone and store no credentials.
+      return toStringRecord(parsed);
+    }
   } catch {
     // Configurations created before the generic provider boundary stored the API key directly.
   }

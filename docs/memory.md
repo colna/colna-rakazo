@@ -29,6 +29,12 @@ their notes. In **Settings → Memory**, choose **Connect memory provider**:
 - **Supermemory**: its cloud service, or your own instance.
 - **Serenity**: choose **Recall and write**, or **Recall only** to keep it read-only.
 - **Honcho**: reads from an existing Honcho peer and never writes to it.
+- **Markdown vault**: a folder of Markdown notes on the server, such as a `colna-memo` vault or
+  an Obsidian vault. Recall reads the notes directly. Writing is optional and adds facts to
+  `00-Inbox/rakazo-memory.md`; your own tools index and sync that file normally. Use the vault
+  root that contains `memory/`, or any folder of `.md` files. The folder is read by the server,
+  so a self-hosted deployment must set `MCP_ALLOW_PRIVATE_ENDPOINT=true`, as it does for other
+  local memory services.
 
 Once connected, **Default scope** decides what bots share in the provider:
 

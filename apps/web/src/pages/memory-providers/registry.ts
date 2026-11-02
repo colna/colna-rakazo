@@ -1,6 +1,8 @@
 import type { SpaceMemoryConfig } from "@rakazo/contracts";
 import type { ComponentType } from "react";
 import { HonchoSettingsForm } from "./HonchoSettingsForm";
+import { MarkdownVaultSettingsForm } from "./MarkdownVaultSettingsForm";
+import { markdownVaultConnectedLabel } from "./markdown-vault-settings";
 import { SerenitySettingsForm } from "./SerenitySettingsForm";
 import { SupermemorySettingsForm } from "./SupermemorySettingsForm";
 
@@ -30,6 +32,12 @@ export const MEMORY_PROVIDER_SETTINGS: readonly MemoryProviderSettingsRegistrati
       config.settings.mode === "cloud"
         ? "Supermemory Cloud"
         : `Self-hosted (${config.settings.baseUrl})`,
+  },
+  {
+    id: "markdown-vault",
+    name: "Markdown vault",
+    SettingsForm: MarkdownVaultSettingsForm,
+    connectedLabel: markdownVaultConnectedLabel,
   },
   {
     id: "serenity",

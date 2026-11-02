@@ -1,9 +1,31 @@
 import { describe, expect, it } from "vitest";
+import { markdownVaultConnectedLabel } from "./markdown-vault-settings";
 import {
   SERENITY_ENDPOINT_PLACEHOLDER,
   serenityConnectionDraft,
   serenityEndpointError,
 } from "./serenity-settings";
+
+describe("Markdown vault settings", () => {
+  it("labels the folder and write mode", () => {
+    expect(
+      markdownVaultConnectedLabel({
+        provider: "markdown-vault",
+        settings: { root: "/srv/notes", allowWrites: "false" },
+        defaultMemoryScope: "isolated",
+        updatedAt: "",
+      }),
+    ).toBe("/srv/notes, recall only");
+    expect(
+      markdownVaultConnectedLabel({
+        provider: "markdown-vault",
+        settings: { root: "/srv/notes", allowWrites: "true" },
+        defaultMemoryScope: "isolated",
+        updatedAt: "",
+      }),
+    ).toBe("/srv/notes, read/write");
+  });
+});
 
 describe("Serenity memory provider settings", () => {
   it("requires an explicit endpoint and leaves URL validity to the backend", () => {
