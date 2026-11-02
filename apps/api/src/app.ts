@@ -164,6 +164,7 @@ import { configuredEmailProvider } from "./email.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
+import { localActor, localAuthSession, localNoAuthEnabled } from "./local-no-auth.js";
 import { mountLocalComputerHost } from "./local-settings.js";
 import { marketingEmailRoutes, sendWelcomeEmail } from "./marketing-email.js";
 import { moveMcpArgsIntoSecrets } from "./mcp-args-migration.js";
@@ -280,6 +281,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     ...envOverrides
   } = overrides;
   const env = { ...loadEnv(process.env), ...envOverrides };
+  const noAuth = localNoAuthEnabled();
   const logger = loggerOverride ?? createServiceLogger({ service: SERVICE_NAMES.api });
   installLogger(logger);
   const poolMax = parsePositiveInteger(process.env.DB_POOL_MAX, 4);
@@ -901,6 +903,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
   }
   app.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const path = new URL(c.req.url).pathname.replace("/api/auth", "");
+    if (noAuth && path === "/get-session") {
+      return c.json(await localAuthSession(prisma));
+    }
     if (isBlockedAuthPath(path)) {
       return c.json({ error: "Not available in version 1" }, 404);
     }
@@ -915,6 +920,16 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     prisma,
   });
   const requestSession = async (request: Request) => {
+    if (noAuth) {
+      const actor = await actorFromMembership(
+        requireMembership(
+          prisma,
+          (await localActor(prisma)).userId,
+          request.headers.get("x-rakazo-space-id"),
+        ),
+      );
+      return actor && { actor, sessionId: "local-session" };
+    }
     // The bearer plugin turns a signed `Authorization: Bearer` into the session cookie.
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session?.user) return null;
