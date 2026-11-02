@@ -36,6 +36,10 @@ their notes. In **Settings → Memory**, choose **Connect memory provider**:
   so a self-hosted deployment must set `MCP_ALLOW_PRIVATE_ENDPOINT=true`, as it does for other
   local memory services.
 
+When a Markdown vault is connected, bots gain `kb_search`, `kb_get`, and `kb_context` tools plus a
+standing rule to search the vault before answering questions about the user's own notes, projects,
+people, or past decisions. Notes are treated as untrusted historical data, not instructions.
+
 Once connected, **Default scope** decides what bots share in the provider:
 
 - **Isolated**: each bot recalls only what it saved. This is the default.

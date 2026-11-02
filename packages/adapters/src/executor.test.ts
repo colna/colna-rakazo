@@ -1342,6 +1342,30 @@ describe("userTurnInstructions", () => {
     replyGuidance,
   };
 
+  it("adds the knowledge-base rule only when the tools are offered", () => {
+    const required = {
+      ...base,
+      groupContext: undefined,
+      messagingContext: undefined,
+      redactedMemoryContext: undefined,
+      redactedScratchpadContext: undefined,
+      hasHistoricalContext: false,
+      agentEnvironmentInstruction: undefined,
+      botDirectory: undefined,
+      pluginLine: undefined,
+      agentSkillsLine: undefined,
+      taughtSkillsLine: undefined,
+    };
+    const enabled = userTurnInstructions({
+      ...required,
+      knowledgeBaseInstruction: "Use kb_search before answering from notes.",
+    }).filter(Boolean);
+    expect(enabled).toContain("Use kb_search before answering from notes.");
+    expect(userTurnInstructions(required).filter(Boolean)).not.toContain(
+      "Use kb_search before answering from notes.",
+    );
+  });
+
   it("places stable guidance before volatile context when every optional context is present", () => {
     const instructions = userTurnInstructions({
       ...base,

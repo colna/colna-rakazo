@@ -108,6 +108,25 @@ describe("MarkdownVaultMemoryProvider", () => {
     expect(result).toEqual({ ok: true, value: [] });
   });
 
+  it("reads one note by path and refuses escapes", async () => {
+    const root = await vault({ "notes/plan.md": "# Plan\n\nShip it." });
+    const provider = createMarkdownVaultProvider({ root });
+
+    await expect(provider.read?.({ path: "notes/plan.md" }, context)).resolves.toEqual({
+      ok: true,
+      value: { path: "notes/plan.md", content: "# Plan\n\nShip it." },
+    });
+    await expect(provider.read?.({ path: "../outside.md" }, context)).resolves.toMatchObject({
+      ok: false,
+    });
+    await expect(provider.read?.({ path: "/etc/passwd" }, context)).resolves.toMatchObject({
+      ok: false,
+    });
+    await expect(provider.read?.({ path: "notes/plan.txt" }, context)).resolves.toMatchObject({
+      ok: false,
+    });
+  });
+
   it("writes durable facts only when writes are enabled", async () => {
     const root = await vault();
     const readOnly = createMarkdownVaultProvider({ root });

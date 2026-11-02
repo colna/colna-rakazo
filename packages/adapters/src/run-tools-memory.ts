@@ -8,6 +8,14 @@ import { appendMemoryFact } from "./memory-tools.js";
 import type { RunContext } from "./run-context.js";
 import type { ToolCall, ToolHandlers } from "./run-tool-gate.js";
 
+const KB_DEFAULT_LIMIT = 8;
+const KB_READ_MAX_CHARS = 12_000;
+
+function kbLimit(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.min(20, Math.max(1, Math.trunc(parsed))) : KB_DEFAULT_LIMIT;
+}
+
 /** Cross-chat history requires a surviving direct human request in this app thread. */
 export function historyMyChatsAllowed(
   run: { trigger: string; threadId: string },
@@ -152,6 +160,70 @@ export const memoryTools: ToolHandlers = {
         context,
       ),
     );
+  },
+  async kb_search(ctx, call) {
+    const { bot, context } = ctx;
+    const provider = ctx.memory.semantic;
+    if (!provider) return call.finish({ error: "No knowledge base is connected." });
+    const query = String(call.args.query ?? "").trim();
+    if (!query) return call.finish({ error: "query is required." });
+    const result = await provider.recall(
+      {
+        query,
+        scope: ctx.memory.scope ?? "shared",
+        botId: bot.id,
+        limit: kbLimit(call.args.limit),
+      },
+      context,
+    );
+    if (!result.ok) return call.finish({ error: result.error });
+    return call.finish({
+      results: result.value.map((hit) => ({
+        path: hit.id ?? hit.provenance ?? "",
+        snippet: hit.memory,
+        score: hit.score,
+        updatedAt: hit.updatedAt,
+      })),
+    });
+  },
+  async kb_get(ctx, call) {
+    const provider = ctx.memory.semantic;
+    if (!provider?.read) return call.finish({ error: "No read-only knowledge base is connected." });
+    const notePath = String(call.args.path ?? "").trim();
+    if (!notePath) return call.finish({ error: "path is required." });
+    const result = await provider.read({ path: notePath }, ctx.context);
+    if (!result.ok) return call.finish({ error: result.error });
+    const truncated = result.value.content.length > KB_READ_MAX_CHARS;
+    return call.finish({
+      path: result.value.path,
+      content: result.value.content.slice(0, KB_READ_MAX_CHARS),
+      ...(truncated ? { truncated: true } : {}),
+    });
+  },
+  async kb_context(ctx, call) {
+    const { bot, context } = ctx;
+    const provider = ctx.memory.semantic;
+    if (!provider) return call.finish({ error: "No knowledge base is connected." });
+    const task = String(call.args.task ?? "").trim();
+    if (!task) return call.finish({ error: "task is required." });
+    const result = await provider.recall(
+      {
+        query: task,
+        scope: ctx.memory.scope ?? "shared",
+        botId: bot.id,
+        limit: kbLimit(call.args.limit),
+      },
+      context,
+    );
+    if (!result.ok) return call.finish({ error: result.error });
+    if (result.value.length === 0) return call.finish({ content: "No matching notes." });
+    const sections = result.value.map((hit) => `## ${hit.id ?? "note"}\n${hit.memory.trim()}`);
+    const content = `Knowledge base context for: ${task}\n\n${sections.join("\n\n")}`;
+    const truncated = content.length > KB_READ_MAX_CHARS;
+    return call.finish({
+      content: content.slice(0, KB_READ_MAX_CHARS),
+      ...(truncated ? { truncated: true } : {}),
+    });
   },
   async forget_memory(ctx, call) {
     const { bot, context } = ctx;

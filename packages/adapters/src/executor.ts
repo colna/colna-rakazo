@@ -130,6 +130,7 @@ import { APPROVED_EFFECT_REPLAY_ORDER, buildApprovalContinuation } from "./run-e
 import {
   BOT_DIRECTORY_LIMIT,
   dockerComputerToolInstruction,
+  KNOWLEDGE_BASE_INSTRUCTION,
   persistentComputerInstruction,
   runIdentityInstruction,
   threadContextForRun,
@@ -1148,6 +1149,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
             trigger: run.trigger,
             semanticMemoryEnabled,
             semanticMemoryForgets: Boolean(semanticMemory?.forget),
+            knowledgeBaseEnabled: Boolean(semanticMemory?.read),
             mediaImagesEnabled: Boolean(deps.artifacts && mediaGeneration?.capabilities.images),
             mediaVideoEnabled: Boolean(deps.artifacts && mediaGeneration?.capabilities.video),
             cloudAgentEnabled: cloudAgentsEnabled(cloudAgent, run.spaceId),
@@ -1204,6 +1206,9 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           run.trigger === "created" ? builtins : [...builtins, ...exposedConnectorTools];
         const taskCatalogInstruction = tools.some((tool) => tool.name === "task_catalog")
           ? TASK_CATALOG_GUIDANCE
+          : undefined;
+        const knowledgeBaseInstruction = tools.some((tool) => tool.name === "kb_search")
+          ? KNOWLEDGE_BASE_INSTRUCTION
           : undefined;
         const approvedEffects = await deps.prisma.externalEffect.findMany({
           where: { runId, status: "approved" },
@@ -1612,6 +1617,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
                 computerInstruction,
                 pageBrowserAllowed,
                 taskCatalogInstruction,
+                knowledgeBaseInstruction,
                 workspaceInstruction,
                 agentEnvironmentInstruction,
                 botDirectory,

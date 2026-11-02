@@ -1,6 +1,6 @@
 import type { ConnectorTool } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
-import { appendMemoryFact, selectMemoryTools } from "./memory-tools.js";
+import { appendMemoryFact, selectKnowledgeBaseTools, selectMemoryTools } from "./memory-tools.js";
 
 function tool(name: string): ConnectorTool {
   return { name, description: name, inputSchema: { type: "object", properties: {} } };
@@ -34,6 +34,20 @@ describe("selectMemoryTools", () => {
     const shellOnly = [tool("shell")];
     expect(selectMemoryTools(shellOnly, false, false)).toEqual(shellOnly);
     expect(selectMemoryTools(shellOnly, true, true)).toEqual(shellOnly);
+  });
+});
+
+describe("selectKnowledgeBaseTools", () => {
+  const tools = [tool("kb_search"), tool("kb_get"), tool("kb_context"), tool("shell")];
+
+  it("keeps knowledge-base tools only when the provider can read notes", () => {
+    expect(selectKnowledgeBaseTools(tools, false).map((entry) => entry.name)).toEqual(["shell"]);
+    expect(selectKnowledgeBaseTools(tools, true).map((entry) => entry.name)).toEqual([
+      "kb_search",
+      "kb_get",
+      "kb_context",
+      "shell",
+    ]);
   });
 });
 

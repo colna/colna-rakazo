@@ -2,6 +2,8 @@ import type { ConnectorTool } from "@rakazo/adapter-kit";
 
 const SEMANTIC_MEMORY_TOOL_NAMES = new Set(["recall_memory", "save_memory", "forget_memory"]);
 
+export const KNOWLEDGE_BASE_TOOL_NAMES = new Set(["kb_search", "kb_get", "kb_context"]);
+
 /** `forget_memory` is offered only when the provider implements its optional forget verb. */
 export function selectMemoryTools(
   tools: ConnectorTool[],
@@ -11,6 +13,16 @@ export function selectMemoryTools(
   return semanticMemoryConfigured
     ? tools.filter((tool) => semanticMemoryForgets || tool.name !== "forget_memory")
     : tools.filter((tool) => !SEMANTIC_MEMORY_TOOL_NAMES.has(tool.name));
+}
+
+/** Knowledge-base tools exist only when the configured provider can read notes by path. */
+export function selectKnowledgeBaseTools(
+  tools: ConnectorTool[],
+  knowledgeBaseEnabled: boolean,
+): ConnectorTool[] {
+  return knowledgeBaseEnabled
+    ? tools
+    : tools.filter((tool) => !KNOWLEDGE_BASE_TOOL_NAMES.has(tool.name));
 }
 
 export function appendMemoryFact(existing: string, fact: string): string {

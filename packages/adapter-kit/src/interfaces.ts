@@ -329,6 +329,11 @@ export interface SemanticMemoryProvider {
     request: SemanticMemoryForgetRequest,
     context: AdapterContext,
   ): Promise<SemanticMemoryResponse<{ id: string; expired: boolean; reason: string | null }>>;
+  /** Optional read-by-path for knowledge-base tools. Providers without notes omit this. */
+  read?(
+    request: { path: string },
+    context: AdapterContext,
+  ): Promise<SemanticMemoryResponse<{ path: string; content: string }>>;
 }
 
 export interface AgentRuntime {

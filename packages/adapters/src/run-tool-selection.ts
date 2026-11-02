@@ -6,7 +6,7 @@ import {
 import { isBackgroundRunTrigger, isOwnerStartedRun } from "@rakazo/core";
 import { builtinAgentTools } from "./builtin-tools.js";
 import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
-import { selectMemoryTools } from "./memory-tools.js";
+import { selectKnowledgeBaseTools, selectMemoryTools } from "./memory-tools.js";
 import { filterImageReturningComputerTools } from "./model-vision.js";
 import { USER_COMPUTER_SCREEN_TOOLS } from "./run-tools-user-computer.js";
 import { filterBuiltinToolsForRun, filterBuiltinToolsForThread } from "./schedule-tools.js";
@@ -22,6 +22,9 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "run_subagent",
   "task_catalog",
   "recall_memory",
+  "kb_search",
+  "kb_get",
+  "kb_context",
   "schedule_list",
   "scratchpad_list",
   "board_tickets",
@@ -64,6 +67,8 @@ export function selectBuiltinToolsForRun(options: {
   semanticMemoryEnabled: boolean;
   /** The configured provider can forget individual facts. */
   semanticMemoryForgets?: boolean;
+  /** The configured memory provider can read Markdown notes by path. */
+  knowledgeBaseEnabled?: boolean;
   cloudAgentEnabled?: boolean;
   /** The run's user connected a payment wallet. */
   paymentWalletEnabled?: boolean;
@@ -85,19 +90,22 @@ export function selectBuiltinToolsForRun(options: {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   const ownerStartedRun = isOwnerStartedRun(options.trigger, Boolean(options.followUpFromUser));
   return selectCloudAgentTools(
-    selectMemoryTools(
-      filterBuiltinToolsForRun(
-        filterBuiltinToolsForThread(
-          filterPageBrowserTools(
-            filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
-            options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+    selectKnowledgeBaseTools(
+      selectMemoryTools(
+        filterBuiltinToolsForRun(
+          filterBuiltinToolsForThread(
+            filterPageBrowserTools(
+              filterImageReturningComputerTools(builtinAgentTools, options.graphicalToolsAllowed),
+              options.pageBrowserAllowed ?? options.graphicalToolsAllowed,
+            ),
+            options.groupId,
           ),
-          options.groupId,
+          options.trigger,
         ),
-        options.trigger,
+        options.semanticMemoryEnabled,
+        Boolean(options.semanticMemoryForgets),
       ),
-      options.semanticMemoryEnabled,
-      Boolean(options.semanticMemoryForgets),
+      Boolean(options.knowledgeBaseEnabled),
     ),
     Boolean(options.cloudAgentEnabled),
   ).filter(
@@ -141,6 +149,9 @@ export function selectBuiltinToolsForRun(options: {
           "save_memory",
           "recall_memory",
           "forget_memory",
+          "kb_search",
+          "kb_get",
+          "kb_context",
           "task_catalog",
           "board_tickets",
         ].includes(tool.name) &&

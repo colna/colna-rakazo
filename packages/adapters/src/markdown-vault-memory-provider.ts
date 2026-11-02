@@ -319,6 +319,36 @@ export class MarkdownVaultMemoryProvider implements SemanticMemoryProvider {
     }
   }
 
+  async read(
+    request: { path: string },
+    context: AdapterContext,
+  ): Promise<SemanticMemoryResponse<{ path: string; content: string }>> {
+    if (context.signal.aborted) return { ok: false, error: "cancelled" };
+    const relative = request.path.trim().replaceAll("\\", "/");
+    if (
+      !relative ||
+      path.isAbsolute(relative) ||
+      relative.split("/").some((segment) => segment === "..") ||
+      !relative.toLowerCase().endsWith(".md")
+    ) {
+      return { ok: false, error: "Note path must be a relative Markdown path." };
+    }
+    const file = path.resolve(this.connection.notesRoot, relative);
+    if (!file.startsWith(`${this.connection.notesRoot}${path.sep}`)) {
+      return { ok: false, error: "Note path must stay inside the vault." };
+    }
+    try {
+      const info = await lstat(file);
+      if (!info.isFile() || info.isSymbolicLink()) {
+        return { ok: false, error: "Note not found." };
+      }
+      if (info.size > MAX_NOTE_BYTES) return { ok: false, error: "Note is too large to read." };
+      return { ok: true, value: { path: relative, content: await readFile(file, "utf8") } };
+    } catch {
+      return { ok: false, error: "Note not found." };
+    }
+  }
+
   async save(
     request: SemanticMemorySaveRequest,
     context: AdapterContext,
