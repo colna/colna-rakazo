@@ -1,6 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalPassThroughEnv": ["COREPACK_ENABLE_DOWNLOAD_PROMPT"],
+  "globalPassThroughEnv": [
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT",
+    "RAKAZO_WEB_URL",
+    "RAKAZO_API_URL",
+    "RAKAZO_PLAYWRIGHT_CHANNEL"
+  ],
   "globalDependencies": ["scripts/build-server.mjs", "tsconfig.base.json"],
   "tasks": {
     "generate": {
