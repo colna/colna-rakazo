@@ -11,6 +11,7 @@ import {
 } from "@rakazo/adapter-kit";
 import {
   containsSecret,
+  createStreamingRedactor,
   displayName,
   humanizeToolName,
   isBackgroundRunTrigger,
@@ -108,6 +109,25 @@ export async function consumeRunEvents(
   const { deps, run, runId, bot } = ctx;
   const { reply } = ctx.state;
   let thinking = false;
+  const reasoningRedactor = createStreamingRedactor(ctx.secrets);
+  let pendingReasoning = "";
+  let lastReasoningAt = 0;
+  const flushReasoning = async (final = false) => {
+    if (final) pendingReasoning += reasoningRedactor.finish();
+    if (!pendingReasoning) return;
+    const text = redactSecrets(pendingReasoning, ctx.secrets);
+    pendingReasoning = "";
+    lastReasoningAt = Date.now();
+    if (ctx.scripted || isBackgroundRunTrigger(run.trigger)) return;
+    await deps.events.append({
+      spaceId: run.spaceId,
+      threadId: run.threadId,
+      botId: bot.id,
+      runId,
+      type: "thread.progress",
+      payload: { reasoning: text },
+    });
+  };
   const publishThinking = async (active: boolean) => {
     if (thinking === active) return;
     thinking = active;
@@ -134,6 +154,12 @@ export async function consumeRunEvents(
       if (!ctx.state.lease.valid) return true;
       if (await runLeaseLost(ctx)) return true;
 
+      if (event.type === "reasoning") {
+        pendingReasoning += reasoningRedactor.push(event.text);
+        if (Date.now() - lastReasoningAt >= 250) await flushReasoning();
+        continue;
+      }
+      await flushReasoning();
       if (event.type === "thinking") {
         await publishThinking(event.active);
         continue;
@@ -199,6 +225,7 @@ export async function consumeRunEvents(
     return false;
   } finally {
     // Run completion clears thinking too; never let this replace the turn's own outcome.
+    await flushReasoning(true).catch(() => {});
     await publishThinking(false).catch(() => {});
   }
 }

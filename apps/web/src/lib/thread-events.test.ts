@@ -235,6 +235,28 @@ describe("thread event reduction", () => {
     ]);
   });
 
+  it("reduces streamed reasoning into its own live block", () => {
+    const first = reduceThreadSnapshot(
+      snapshot([]),
+      event({ type: "thread.progress", seq: 4, runId: "run-1", payload: { reasoning: "Plan " } }),
+    );
+    const second = reduceThreadSnapshot(
+      first,
+      event({
+        type: "thread.progress",
+        seq: 5,
+        runId: "run-1",
+        payload: { reasoning: "checked." },
+      }),
+    );
+    expect(second?.messages).toEqual([
+      expect.objectContaining({
+        id: "progress:run-1",
+        blocks: [{ kind: "reasoning", text: "Plan checked." }],
+      }),
+    ]);
+  });
+
   it("keeps hidden token progress so re-enabling streaming stays continuous", () => {
     const initial = snapshot([]);
     const afterTokens = reduceThreadSnapshot(

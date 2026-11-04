@@ -445,7 +445,7 @@ export async function threadSnapshot(
                 })
               : null;
           const currentRun = run?.status === "failed" && newestTerminal?.id !== run.id ? null : run;
-          const liveRuns = activeRuns.filter((run) => run.trigger !== "bot_message");
+          const liveRuns = activeRuns;
           const liveEvents =
             liveRuns.length > 0
               ? await tx.event.findMany({
@@ -607,10 +607,27 @@ function pickLatestTerminalRun<T extends { id: string; createdAt: Date; complete
 function messagesWithLiveEvents(
   persisted: ThreadSnapshot["messages"],
   liveEvents: Parameters<typeof projectMessages>[0],
-  runs: NonNullable<Parameters<typeof projectMessages>[1]>,
+  runs: ReadonlyArray<{ id: string; status: string; trigger: string }>,
 ) {
+  const botMessageRuns = new Set(
+    runs.filter((run) => run.trigger === "bot_message").map((run) => run.id),
+  );
   const live = projectMessages(liveEvents, runs).filter((message) => {
-    if (message.blocks.some((block) => block.kind === "progress" || block.kind === "steps")) {
+    // Peer-triggered work stays quiet until it has reasoning to show; once it does, its
+    // tool steps and live progress belong with that thinking rather than appearing alone.
+    if (
+      message.runId &&
+      botMessageRuns.has(message.runId) &&
+      !message.blocks.some((block) => block.kind === "reasoning")
+    ) {
+      return false;
+    }
+    if (
+      message.blocks.some(
+        (block) =>
+          block.kind === "progress" || block.kind === "steps" || block.kind === "reasoning",
+      )
+    ) {
       return true;
     }
     if (!message.id.startsWith("subagent:")) return false;

@@ -219,6 +219,11 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     pendingToolNames: z.array(z.string()).optional(),
   }),
   z.object({
+    /** Provider reasoning streamed while the bot is still working. Transient. */
+    kind: z.literal("reasoning"),
+    text: z.string(),
+  }),
+  z.object({
     kind: z.literal("steps"),
     steps: z.array(
       z.object({

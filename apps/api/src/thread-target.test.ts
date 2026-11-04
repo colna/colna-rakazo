@@ -675,7 +675,7 @@ describe("threadSnapshot", () => {
         expect(snapshot.run).toMatchObject({ id: run.id, status: "running" });
         expect(snapshot.activeRuns).toEqual([expect.objectContaining({ id: run.id })]);
         expect(snapshot.messages).toEqual([]);
-        expect(findManyEvents).not.toHaveBeenCalled();
+        expect(findManyEvents).toHaveBeenCalledOnce();
         return;
       }
       expect(findManyEvents).toHaveBeenCalledWith(

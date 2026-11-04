@@ -98,7 +98,12 @@ export function projectMessages(
     }
     if (event.type === "thread.progress") {
       const live = liveProjection(event, createdAt);
-      live.blocks = reduceLiveMessageBlocks(live.blocks, { type: "progress", payload });
+      live.blocks = reduceLiveMessageBlocks(
+        live.blocks,
+        typeof payload.reasoning === "string"
+          ? { type: "reasoning", text: payload.reasoning }
+          : { type: "progress", payload },
+      );
       live.meta = {
         ...live.meta,
         seq: event.seq,
@@ -298,12 +303,24 @@ function clampRunFailure(message: string): string {
 
 export type LiveMessageUpdate =
   | { type: "progress"; payload: Record<string, unknown> | undefined }
+  | { type: "reasoning"; text: string }
   | { type: "tool"; name: string };
 
 export function reduceLiveMessageBlocks(
   current: readonly MessageBlock[],
   update: LiveMessageUpdate,
 ): MessageBlock[] {
+  if (update.type === "reasoning") {
+    if (!update.text) return [...current];
+    const tail = current.at(-1);
+    if (tail?.kind === "reasoning") {
+      return [...current.slice(0, -1), { ...tail, text: tail.text + update.text }];
+    }
+    return [...current, { kind: "reasoning", text: update.text }];
+  }
+  if (update.type === "tool" && current.at(-1)?.kind === "reasoning") {
+    return appendToolCallSegment(current, update.name);
+  }
   // A reset drops the text streamed so far (it will not be in the reply) and keeps the steps,
   // including tools still waiting on that text to finish its sentence.
   let blocks = current;

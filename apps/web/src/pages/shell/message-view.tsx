@@ -46,6 +46,25 @@ import {
 } from "./message-cards";
 import { MessageHoverActions } from "./message-hover-actions";
 
+function ReasoningBlock({ text }: { text: string }) {
+  return (
+    <div
+      data-testid="message-reasoning"
+      className="max-w-full border-s-2 border-border/70 ps-3 text-[13px] leading-relaxed text-muted-foreground"
+    >
+      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide opacity-70">
+        <Trans>Thinking</Trans>
+      </div>
+      <div
+        className="max-h-56 overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+        dir="auto"
+      >
+        {text}
+      </div>
+    </div>
+  );
+}
+
 export const MessageView = memo(function MessageView({
   artifactTarget,
   canAnswer,
@@ -119,7 +138,11 @@ export const MessageView = memo(function MessageView({
     message.role === "bot" &&
     message.blocks.length > 0 &&
     message.blocks.every(
-      (block) => block.kind === "text" || block.kind === "progress" || block.kind === "steps",
+      (block) =>
+        block.kind === "text" ||
+        block.kind === "progress" ||
+        block.kind === "reasoning" ||
+        block.kind === "steps",
     );
   const isLive = message.id.startsWith("progress:");
   const quoteMessageId = message.id.includes(":") ? undefined : message.id;
@@ -223,11 +246,11 @@ export const MessageView = memo(function MessageView({
     return (
       <>
         {messageContext}
-        <div className="relative w-fit max-w-full [@media(hover:none)]:w-full">
-          <div className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full">
+        <div className="relative w-full max-w-full">
+          <div className="flex w-full max-w-full justify-start">
             <div
               data-testid="message-bot-bubble"
-              className="max-w-full space-y-2.5 rounded-[20px] bg-muted px-[18px] py-3 text-body1 text-foreground"
+              className="w-full max-w-full space-y-2.5 px-0 py-0 text-body1 text-foreground"
               dir="auto"
             >
               {visibleNarrationBlocks.map((block, i) => {
@@ -246,6 +269,9 @@ export const MessageView = memo(function MessageView({
                       />
                     </ToolActivityDisclosure>
                   );
+                }
+                if (block.kind === "reasoning") {
+                  return <ReasoningBlock key={i} text={block.text} />;
                 }
                 if (block.kind === "text" || block.kind === "progress") {
                   return (
@@ -375,15 +401,15 @@ export const MessageView = memo(function MessageView({
               </div>
             );
           }
+          if (block.kind === "reasoning") {
+            return <ReasoningBlock key={i} text={block.text} />;
+          }
           if (block.kind === "progress") {
             return (
-              <div
-                key={i}
-                className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
-              >
+              <div key={i} className="flex w-full max-w-full justify-start">
                 <div
                   data-testid="message-bot-bubble"
-                  className="max-w-full rounded-[20px] bg-muted px-[18px] py-3 text-body1 text-foreground"
+                  className="w-full max-w-full px-0 py-0 text-body1 text-foreground"
                   dir="auto"
                 >
                   <ChatMarkdown streaming renderMention={renderMention}>
@@ -501,7 +527,7 @@ export const MessageView = memo(function MessageView({
                 <div
                   data-testid="message-user-bubble"
                   data-quote-message-id={quoteMessageId}
-                  className="max-w-full whitespace-pre-wrap wrap-anywhere rounded-[20px] bg-chat-user px-[18px] py-3 text-body1 text-chat-user-foreground"
+                  className="max-w-full whitespace-pre-wrap wrap-anywhere rounded-[20px] bg-muted px-[18px] py-3 text-body1 text-foreground"
                   dir="auto"
                 >
                   <LinkifiedText>{block.text}</LinkifiedText>
@@ -514,11 +540,11 @@ export const MessageView = memo(function MessageView({
             return (
               <div
                 key={i}
-                className="relative flex w-fit max-w-full justify-start [@media(hover:none)]:w-full [@media(hover:none)]:flex-wrap"
+                className="relative flex w-full max-w-full justify-start [@media(hover:none)]:flex-wrap"
               >
                 <div
                   data-testid="message-bot-bubble"
-                  className="max-w-full rounded-[20px] bg-muted px-[18px] py-3 text-body1 text-foreground"
+                  className="w-full max-w-full px-0 py-0 text-body1 text-foreground"
                   dir="auto"
                 >
                   <div data-quote-message-id={quoteMessageId}>

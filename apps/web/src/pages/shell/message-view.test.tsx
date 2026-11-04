@@ -110,6 +110,13 @@ function renderMessage(
   return { mention, onOpenBot };
 }
 
+it("shows provider reasoning in its own labelled block", () => {
+  renderView("bot", [{ kind: "reasoning", text: "Check the API, then patch it." }]);
+  const reasoning = container.querySelector('[data-testid="message-reasoning"]');
+  expect(reasoning?.textContent).toContain("Thinking");
+  expect(reasoning?.textContent).toContain("Check the API, then patch it.");
+});
+
 it("keeps a received peer marker off the user's side while user replies align to the end", () => {
   renderView("user", [
     { kind: "bot_message_received", fromBotId: "peer", fromBotName: "Atlas", text: "Done." },

@@ -162,6 +162,18 @@ describe("reduceLiveMessageBlocks", () => {
     ]);
   });
 
+  it("streams reasoning separately from narration and keeps tools after it", () => {
+    let blocks = reduceLiveMessageBlocks([], { type: "reasoning", text: "First " });
+    blocks = reduceLiveMessageBlocks(blocks, { type: "reasoning", text: "look." });
+    expect(blocks).toEqual([{ kind: "reasoning", text: "First look." }]);
+
+    blocks = reduceLiveMessageBlocks(blocks, { type: "tool", name: "shell" });
+    expect(blocks).toEqual([
+      { kind: "reasoning", text: "First look." },
+      { kind: "steps", steps: [{ label: "Shell", count: 1 }] },
+    ]);
+  });
+
   it("drops streamed text on a reset, keeps the steps, and shows the note as the working line", () => {
     let blocks = reduceLiveMessageBlocks([], {
       type: "progress",
@@ -262,6 +274,31 @@ describe("projectMessages", () => {
     expect(messages).toHaveLength(2);
     expect(messages[0]?.blocks[0]).toEqual({ kind: "text", text: "hi" });
     expect(messages[1]?.blocks[0]).toEqual({ kind: "progress", text: "Lisbon" });
+  });
+
+  it("replays provider reasoning as its own live block", () => {
+    const messages = projectMessages([
+      {
+        id: "e1",
+        threadId: "t1",
+        seq: 0,
+        type: "thread.progress",
+        runId: "r1",
+        payload: { reasoning: "Plan " },
+        createdAt: "2026-01-01T00:00:01.000Z",
+      },
+      {
+        id: "e2",
+        threadId: "t1",
+        seq: 1,
+        type: "thread.progress",
+        runId: "r1",
+        payload: { reasoning: "checked." },
+        createdAt: "2026-01-01T00:00:02.000Z",
+      },
+    ]);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.blocks).toEqual([{ kind: "reasoning", text: "Plan checked." }]);
   });
 
   it("drops streaming tokens once the completed message is durable", () => {

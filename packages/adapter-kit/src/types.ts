@@ -639,8 +639,10 @@ export interface ModelCallObserver {
 
 export type AgentRuntimeEvent =
   | { type: "text"; text: string }
-  /** Explicit provider reasoning lifecycle only; never contains reasoning text. */
+  /** Explicit provider reasoning lifecycle. */
   | { type: "thinking"; active: boolean }
+  /** Provider reasoning text, only while the model is thinking before it answers. */
+  | { type: "reasoning"; text: string }
   /** A new assistant message starts; its text does not continue the previous text. */
   | { type: "turn" }
   /** Messages sent while the bot worked were handed to the model before this turn. */

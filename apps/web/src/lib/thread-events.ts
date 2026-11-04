@@ -472,10 +472,12 @@ export function reduceThreadSnapshot(
   if (event.type === "thread.progress") {
     const liveId = progressMessageId(event);
     const { previous, remaining } = takeLiveMessage(prev.messages, liveId);
-    const blocks = reduceLiveMessageBlocks(previous?.blocks ?? [], {
-      type: "progress",
-      payload: event.payload,
-    });
+    const blocks = reduceLiveMessageBlocks(
+      previous?.blocks ?? [],
+      typeof event.payload.reasoning === "string"
+        ? { type: "reasoning", text: event.payload.reasoning }
+        : { type: "progress", payload: event.payload },
+    );
     const streaming: ThreadMessage = {
       id: liveId,
       threadId: event.threadId,
